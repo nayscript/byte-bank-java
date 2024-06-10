@@ -34,8 +34,9 @@ public class BytebankApplication {
                         break;
                     case 6:
                         realizarDeposito();
+                        break;
                     case 7:
-                        realizarTranferencia();
+                        realizarTransferencia();
                         break;
                 }
             } catch (RegraDeNegocioException e) {
@@ -58,7 +59,7 @@ public class BytebankApplication {
                 4 - Consultar saldo de uma conta
                 5 - Realizar saque em uma conta
                 6 - Realizar depósito em uma conta
-                7 - Realizar transfêrencia
+                7 - Realizar transferência
                 8 - Sair
                 """);
         return teclado.nextInt();
@@ -97,7 +98,7 @@ public class BytebankApplication {
         System.out.println("Digite o número da conta:");
         var numeroDaConta = teclado.nextInt();
 
-        service.encerrar(numeroDaConta);
+        service.encerrarLogico(numeroDaConta);
 
         System.out.println("Conta encerrada com sucesso!");
         System.out.println("Pressione qualquer tecla e de ENTER para voltar ao menu principal");
@@ -141,20 +142,21 @@ public class BytebankApplication {
         teclado.next();
     }
 
-    private static  void realizarTranferencia() {
+    private static void realizarTransferencia() {
         System.out.println("Digite o número da conta de origem:");
         var numeroDaContaOrigem = teclado.nextInt();
 
         System.out.println("Digite o número da conta de destino:");
         var numeroDaContaDestino = teclado.nextInt();
 
-        System.out.println("Digite o valor a ser tranferido:");
+        System.out.println("Digite o valor a ser transferido:");
         var valor = teclado.nextBigDecimal();
 
         service.realizarTransferencia(numeroDaContaOrigem, numeroDaContaDestino, valor);
 
-        System.out.println("Transferencia realizada com sucesso!");
+        System.out.println("Transferência realizada com sucesso!");
         System.out.println("Pressione qualquer tecla e de ENTER para voltar ao menu principal");
         teclado.next();
     }
+
 }

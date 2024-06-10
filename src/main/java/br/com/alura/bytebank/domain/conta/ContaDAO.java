@@ -4,10 +4,7 @@ import br.com.alura.bytebank.domain.cliente.Cliente;
 import br.com.alura.bytebank.domain.cliente.DadosCadastroCliente;
 
 import java.math.BigDecimal;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -21,75 +18,60 @@ public class ContaDAO {
 
     public void salvar(DadosAberturaConta dadosDaConta) {
         var cliente = new Cliente(dadosDaConta.dadosCliente());
-        var conta = new Conta(dadosDaConta.numero(), BigDecimal.ZERO, cliente);
-
-        // query sql
+        var conta = new Conta(dadosDaConta.numero(), BigDecimal.ZERO, cliente, true);
 
         String sql = "INSERT INTO conta (numero, saldo, cliente_nome, cliente_cpf, cliente_email)" +
                 "VALUES (?, ?, ?, ?, ?)";
 
         try {
+            PreparedStatement preparedStatement = conn.prepareStatement(sql);
 
-            // insere os dados no banco
-            PreparedStatement prepareStatement = conn.prepareStatement(sql);
+            preparedStatement.setInt(1, conta.getNumero());
+            preparedStatement.setBigDecimal(2, BigDecimal.ZERO);
+            preparedStatement.setString(3, dadosDaConta.dadosCliente().nome());
+            preparedStatement.setString(4, dadosDaConta.dadosCliente().cpf());
+            preparedStatement.setString(5, dadosDaConta.dadosCliente().email());
+            preparedStatement.setBoolean(6, true);
 
-            // parameterindex é a posicao de cada item na query sql
-            // seta os valores nas tabelas do banco
-
-            prepareStatement.setInt(1, conta.getNumero());
-            prepareStatement.setBigDecimal(2, BigDecimal.ZERO);
-            prepareStatement.setString(3, dadosDaConta.dadosCliente().nome());
-            prepareStatement.setString(4, dadosDaConta.dadosCliente().cpf());
-            prepareStatement.setString(5, dadosDaConta.dadosCliente().email());
-
-            prepareStatement.execute();
-            prepareStatement.close();
+            preparedStatement.execute();
+            preparedStatement.close();
             conn.close();
-
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
 
     public Set<Conta> listar() {
-
         PreparedStatement ps;
-        ResultSet resultSet = null;
-
+        ResultSet resultSet;
         Set<Conta> contas = new HashSet<>();
 
-        String sql = "SELECT * FROM conta";
+        String sql = "SELECT * FROM conta WHERE esta_ativa = true";
 
-        try{
+        try {
             ps = conn.prepareStatement(sql);
-
             resultSet = ps.executeQuery();
-            // resulta no conteudo das linhas do banco de dados
 
             while (resultSet.next()) {
-                // a cada interacao do resultset  pega uma linha do banco e transforma em obj
                 Integer numero = resultSet.getInt(1);
                 BigDecimal saldo = resultSet.getBigDecimal(2);
-                String nome = resultSet.getNString(3);
-                String cpf = resultSet.getNString(4);
-                String email = resultSet.getNString(5);
+                String nome = resultSet.getString(3);
+                String cpf = resultSet.getString(4);
+                String email = resultSet.getString(5);
+                Boolean estaAtiva = resultSet.getBoolean(6);
 
                 DadosCadastroCliente dadosCadastroCliente =
                         new DadosCadastroCliente(nome, cpf, email);
                 Cliente cliente = new Cliente(dadosCadastroCliente);
 
-                contas.add(new Conta(numero, saldo, cliente));
-
+                contas.add(new Conta(numero, saldo, cliente, estaAtiva));
             }
-
             resultSet.close();
             ps.close();
             conn.close();
-
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-
         return contas;
     }
 
@@ -99,7 +81,6 @@ public class ContaDAO {
         PreparedStatement ps;
         ResultSet resultSet;
         Conta conta = null;
-
         try {
             ps = conn.prepareStatement(sql);
             ps.setInt(1, numero);
@@ -111,10 +92,13 @@ public class ContaDAO {
                 String nome = resultSet.getString(3);
                 String cpf = resultSet.getString(4);
                 String email = resultSet.getString(5);
+                Boolean estaAtiva = resultSet.getBoolean(6);
 
                 DadosCadastroCliente dadosCadastroCliente =
                         new DadosCadastroCliente(nome, cpf, email);
                 Cliente cliente = new Cliente(dadosCadastroCliente);
+
+                conta = new Conta(numeroRecuperado, saldo, cliente, estaAtiva);
             }
             resultSet.close();
             ps.close();
@@ -130,6 +114,8 @@ public class ContaDAO {
         String sql = "UPDATE conta SET saldo = ? WHERE numero = ?";
 
         try {
+            conn.setAutoCommit(false);
+
             ps = conn.prepareStatement(sql);
 
             ps.setBigDecimal(1, valor);
@@ -138,14 +124,18 @@ public class ContaDAO {
             ps.execute();
             ps.close();
             conn.close();
-
+            conn.commit();
         } catch (SQLException e) {
+            try {
+                conn.rollback();
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
             throw new RuntimeException(e);
         }
     }
 
     public void deletar(Integer numeroDaConta) {
-
         String sql = "DELETE FROM conta WHERE numero = ?";
 
         try {
@@ -155,7 +145,25 @@ public class ContaDAO {
 
             ps.execute();
             ps.close();
-        } catch (SQLException e){
+            conn.close();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void alterarLogico(Integer numeroDaConta) {
+        PreparedStatement ps;
+        String sql = "UPDATE conta SET esta_ativa = false WHERE numero = ?";
+
+        try {
+            ps = conn.prepareStatement(sql);
+
+            ps.setInt(1, numeroDaConta);
+
+            ps.execute();
+            ps.close();
+            conn.close();
+        } catch (SQLException e) {
             throw new RuntimeException(e);
         }
     }
